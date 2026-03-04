@@ -1,14 +1,15 @@
-import os
 import torch
 from torchvision import transforms
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-HASH_BITS = 64
+HASH_BITS = 128
 SEED = 42
 LR = 1e-4
 BATCH_SIZE = 32
-EPOCHS = 20
+EPOCHS = 30
+QUANT_WEIGHT = 0.05
+VERIFY_THRESHOLD = 15
 
 TRAIN_ORIG = "dataset/originals/train"
 TRAIN_TAMP = "dataset/tampered/train"
@@ -20,6 +21,8 @@ TEST_TAMP  = "dataset/tampered/test"
 TRAIN_TRANSFORM = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(5),
+    transforms.ColorJitter(brightness=0.15, contrast=0.15),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
