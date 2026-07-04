@@ -1,0 +1,123 @@
+Good, that gives me everything I need. One quick note before the structure: your prompt list also has **PROMPT 19** (DeepCauchyHashLoss as an alternative to CSQ) and **E3 (seed variance)** — I've folded the Cauchy comparison into the loss-ablation chapter as a "beyond CSQ" section, and E3 into a short robustness section since it's a sanity check, not really an ablation. Let me also verify the CASIA dataset citation and a couple of key method references before handing you the literature list.Good, that confirms the dataset citation. Let me also quickly verify the CSQ and DCH (Cauchy hashing) paper details since they're central to your loss function and Prompt 19.I have what I need. Here's the proposed structure and reference list.
+
+# Thesis structure: *Deep CSQ-Hashing for Tamper Detection*
+
+Modeled on your sample's chapter rhythm (Intro → Related Work → Theory background → Method → Experiments/Results → Conclusion), but adapted to your pipeline. Target ~60 pages: roughly Ch1 (5p) + Ch2 (6p) + Ch3 (10p) + Ch4 (8p) + Ch5 (8p) + Ch6 (15p) + Ch7 (4p) + Ch8 (4p) = ~60p, front/back matter excluded.
+
+---
+
+**Front matter** — Title page · Mentor task sheet · Authenticity statement · Abstract (Bosnian + English) · Contents · List of Figures · List of Tables · List of Abbreviations (CASIA, CSQ, DCH, mAP, TPR/TNR, etc.)
+
+---
+
+**Chapter 1 — Introduction** (~5 pages)
+- 1.1 Problem description (rise of generative/manual tampering, need for verification at scale)
+- 1.2 Focus (deep hashing as the lens, not pixel-level localization)
+- 1.3 Hypothesis (a CSQ-supervised hash code separates authentic/tampered images in Hamming space well enough for both classification *and* retrieval, and this separability is sensitive to specific design choices you tested)
+- 1.4 Methodology (mirror the sample's style: name CASIA2, EfficientNet-B0, the loss terms, the ablation/sweep philosophy)
+- 1.5 Expected results
+- 1.6 Thesis overview
+
+**Chapter 2 — Related Work** (~6 pages)
+- Classical/forensic tamper detection (ELA, CFA, noise-pattern, JPEG-ghost methods)
+- Deep learning for tamper detection/localization (CNN-based, two-stream, frequency-aware)
+- Deep hashing for retrieval (pairwise/triplet methods → CSQ's global hash-center idea → DCH/Cauchy quantization)
+- Positioning: hashing for forensics specifically — most deep hashing work targets *retrieval benchmarks* (NUS-WIDE, COCO, ImageNet); applying it to authentic-vs-tampered separability is the gap you address
+
+**Chapter 3 — Background Theory** (~10 pages)
+- 3.1 Deep convolutional backbones (EfficientNet family — compound scaling; why B0)
+- 3.2 Transfer learning / fine-tuning (frozen warm-up vs. full fine-tune, your two-phase schedule)
+- 3.3 Learning to hash (problem formulation, continuous relaxation via tanh, sign() at inference)
+- 3.4 Central Similarity Quantization (hash centers, Hamming-distance separation, the CSQ loss term derivation — this is where your `csq_loss` formula gets a proper mathematical writeup, analogous to how the sample derives EI/PI/LCB)
+- 3.5 Auxiliary hash losses: quantization loss, bit-balance loss, intra-class diversity loss — why each is needed (binarization gap, bit collapse, code-collapse-per-class)
+- 3.6 Alternative: pairwise Cauchy hashing (DCH) as a contrasting paradigm — short, sets up Prompt 19's comparison later
+
+**Chapter 4 — Proposed Method: ForensicHashNet** (~8 pages)
+- 4.1 Architecture overview (backbone → fusion → hash head / cls head, diagram)
+- 4.2 Hash head and binarization
+- 4.3 Classification head and its relation to the hash code (and the no-cls-head variant as a design alternative, foreshadowing ablation B-no-cls)
+- 4.4 Combined loss function: $\mathcal{L} = \lambda_{cls}\mathcal{L}_{cls} + \lambda_{CSQ}\mathcal{L}_{CSQ} + \lambda_{div}\mathcal{L}_{div} + \lambda_{quant}\mathcal{L}_{quant} + \lambda_{bal}\mathcal{L}_{bal}$ — table of default $\lambda$ values
+- 4.5 Training procedure (two-phase: frozen backbone warm-up, then discriminative-LR fine-tune with cosine warm restarts, early stopping on AUC with loss-slack guard)
+
+**Chapter 5 — Experimental Setup** (~8 pages)
+- 5.1 Dataset: CASIA v2.0 (Dong et al. 2013) — composition, Au/Tp counts, known dataset quirks (JPEG signature shortcut, format imbalance — worth a short caveat paragraph since CASIA2 is known to have this issue)
+- 5.2 Data splitting and augmentation (stratified 70/15/15, your transform pipeline)
+- 5.3 Implementation details (timm, AdamW, hardware, seeds)
+- 5.4 Evaluation protocol — two families of metrics:
+  - Classification: Accuracy, Balanced Accuracy, AUC-ROC, F1, TPR/TNR, confusion matrix
+  - Hash-quality / retrieval: bit saturation, bit balance, intra-/inter-class Hamming distance, separability ratio, PCA variance, Precision@k, mAP@k
+- 5.5 Baseline configuration (the full hyperparameter table — HASH_BITS=128, all $\lambda$'s, LR's, epochs)
+
+**Chapter 6 — Results and Discussion** (~15 pages, your largest chapter — this is where most of your 19 prompts live)
+- 6.1 Baseline results (training curves, test metrics, confusion matrix/ROC, hash-quality diagnostics — Prompt 10's post-hoc threshold/Precision@k/mAP analysis goes here as the main retrieval result)
+- 6.2 Architecture and loss-design ablations (table format like the sample's Tables 6.1–6.8)
+  - B2: no diversity loss
+  - B5: no CSQ loss
+  - B6: no weighted sampler
+  - No-classification-head (hash-only nearest-center classification)
+  - C1: EfficientNet-B0 vs. ResNet-50 backbone
+  - Prompt 19: CSQ vs. DeepCauchyHashLoss — separate subsection since it's a genuinely different loss family, not a single ablated term
+  - 6.2.x Discussion: which components matter most, consistent with how the sample's 6.2/6.4 discuss *why* PI/EI/LCB differ
+- 6.3 Hyperparameter sweeps (your D-series — present as small multi-point curves, same spirit as the sample's "second value" sweep prompts)
+  - D1: HASH_BITS ∈ {32, 64, 128}
+  - D2: LAMBDA_DIV ∈ {0, 0.3, 0.6}
+  - D3: TARGET_INTRA_D ∈ {16, 32, 64}
+  - D4: CSQ_SCALE ∈ {1.0, 2.0, 4.0}
+  - D5: LR_BACKBONE ∈ {1e-5, 3e-5, 5e-5}
+  - D6: LAMBDA_CSQ ∈ {1.0, 1.5, 3.0}
+- 6.4 Robustness check: seed variance (E3) — short, framed as "is the baseline's performance a fluke of SEED=42"
+- 6.5 Bit-truncation analysis (post-hoc PCA-ranked top-K vs. true HASH_BITS retraining) — important to keep this explicitly separate from 6.3's D1, exactly as you flagged in your prompts
+- 6.6 Cross-cutting discussion (which single change moved the needle most; what's robust vs. fragile; honest limitation: CASIA2 known shortcut-learning risk)
+
+**Chapter 7 — Conclusion** (~4 pages)
+- 7.1 Summary of findings against the Ch.1 hypothesis
+- 7.2 Future steps (localization extension, cross-dataset generalization to CASIA1/Columbia/COVER, learnable hash centers, categorical/NAS-style search over $\lambda$'s — nice callback to the sample thesis's own future-work style)
+
+**Bibliography**
+
+---
+
+## Literature list
+
+**Datasets**
+- Dong, J., Wang, W., Tan, T. (2013). *CASIA Image Tampering Detection Evaluation Database*. IEEE ChinaSIP 2013. https://doi.org/10.1109/ChinaSIP.2013.6625374
+- Corrected ground truth: https://github.com/namtpham/casia2groundtruth
+
+**Backbone / CNN architecture**
+- Tan, M., Le, Q. (2019). *EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks*. ICML. https://arxiv.org/abs/1905.11946
+- He, K. et al. (2016). *Deep Residual Learning for Image Recognition* (ResNet). CVPR. https://arxiv.org/abs/1512.03385
+- Deng, J. et al. (2009). *ImageNet: A Large-Scale Hierarchical Image Database*. CVPR. (for pretraining provenance)
+
+**Deep hashing — core**
+- Yuan, L. et al. (2020). *Central Similarity Quantization for Efficient Image and Video Retrieval*. CVPR, 3083–3092. https://arxiv.org/abs/1908.00347 (your CSQ loss)
+- Cao, Y., Long, M., Liu, B., Wang, J. (2018). *Deep Cauchy Hashing for Hamming Space Retrieval*. CVPR. https://openaccess.thecvf.com/content_cvpr_2018/papers/Cao_Deep_Cauchy_Hashing_CVPR_2018_paper.pdf (your Prompt 19 baseline)
+- Liu, H., Wang, R., Shan, S., Chen, X. (2016). *Deep Supervised Hashing for Fast Image Retrieval*. CVPR.
+- Cao, Z., Long, M., Wang, J., Yu, P. (2017). *HashNet: Deep Learning to Hash by Continuation*. ICCV. https://arxiv.org/abs/1702.00758 (tanh relaxation precedent — relevant to your hash-head activation)
+- Zhu, H., Long, M., Wang, J., Cao, Y. (2016). *Deep Hashing Network for Efficient Similarity Retrieval*. AAAI.
+
+**Image forensics / tamper detection**
+- Zhou, P., Han, X., Morariu, V., Davis, L. (2018). *Learning Rich Features for Image Manipulation Detection*. CVPR. https://arxiv.org/abs/1805.04953
+- Wu, Y., AbdAlmageed, W., Natarajan, P. (2019). *ManTra-Net: Manipulation Tracing Network*. CVPR.
+- Bayar, B., Stamm, M. (2016/2018). *Constrained Convolutional Neural Networks for Image Splicing/Tampering Detection*. (SRM-style learned residual filters — relevant since your model class docstring mentions an ablated SRM stream)
+- Verdoliva, L. (2020). *Media Forensics and DeepFakes: An Overview*. IEEE J-STSP. https://arxiv.org/abs/2001.06564 (good general survey citation for Ch.2)
+
+**Training / optimization mechanics**
+- Loshchilov, I., Hutter, F. (2017). *SGDR: Stochastic Gradient Descent with Warm Restarts*. ICLR. https://arxiv.org/abs/1608.03983 (your `CosineAnnealingWarmRestarts`)
+- Loshchilov, I., Hutter, F. (2019). *Decoupled Weight Decay Regularization* (AdamW). ICLR. https://arxiv.org/abs/1711.05101
+- Szegedy, C. et al. (2016). *Rethinking the Inception Architecture* (source of label smoothing). CVPR.
+
+**Evaluation metrics**
+- Davis, J., Goadrich, M. (2006). *The Relationship Between Precision-Recall and ROC Curves*. ICML. (useful for justifying your AUC/F1/balanced-accuracy choices on an imbalanced split)
+
+**Dimensionality reduction (for your PCA hash-quality plots)**
+- Jolliffe, I., Cadima, J. (2016). *Principal Component Analysis: A Review and Recent Developments*. Phil. Trans. R. Soc. A.
+- van der Maaten, L., Hinton, G. (2008). *Visualizing Data using t-SNE*. JMLR. (if you keep a t-SNE panel alongside PCA)
+
+---
+
+A few practical notes:
+- I kept the **D1 HASH_BITS sweep (true retrain)** and **Prompt 10's bit-truncation analysis (post-hoc PCA)** as clearly separate subsections (6.3 vs 6.5) per your own flag in the prompts — conflating them would be a methodological error worth avoiding in the writeup itself.
+- The **DCH/Cauchy comparison (Prompt 19)** got its own subsection rather than folding into the ablation table, since it's a different loss *family*, not a knocked-out term — that's a more defensible framing for a thesis committee.
+- I did **not** count E2 (your seed-variance prompt) as a full ablation; it's a robustness check, so it sits in a short 6.4 rather than padding the ablation table.
+
+Want me to draft Chapter 4 (Method) or the Chapter 5 hyperparameter table next, using your baseline notebook's actual values?

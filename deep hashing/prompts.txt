@@ -1,0 +1,54 @@
+DONE!
+
+PROMPT 11 — D1: HASH_BITS=64
+Using my baseline notebook, show me the changed code to run with HASH_BITS=64 instead of 128 (this changes the hash head output dimension, the CSQ centers, and any TARGET_INTRA_D defined relative to HASH_BITS). Set EPOCHS_FINETUNE=15. Do not create any files — just show me every cell that needs to change inline, and flag any downstream hash-quality analysis cell (PCA, t-SNE, Hamming distance plots) that hardcodes 128 and needs updating to read HASH_BITS dynamically instead.
+
+PROMPT 12 — D1: HASH_BITS=32
+Same as above, with HASH_BITS=32. Set EPOCHS_FINETUNE=15. Do not create any files — just show me the changed cells inline.
+
+PROMPT 2 — B2: No IntraDiversity loss
+Using my baseline notebook, show me the changed code to run with LAMBDA_DIV=0 (IntraDiversity loss term disabled). Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified config/loss cells inline. Confirm this is a single config-value change and nothing else needs to move.
+
+PROMPT 3 — D2: LAMBDA_DIV sweep, second value
+Using my baseline notebook, show me the changed code to run with LAMBDA_DIV=0.6 (current baseline is 0.3, and I'm separately running 0 as another experiment). Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified config cell inline.
+
+PROMPT 4 — E3: Seed variance
+Using my baseline notebook, show me the changed code to rerun the exact same A1 configuration with SEED=123 instead of 42 (everything else identical, including EPOCHS_FINETUNE=15 for consistency with my other new runs). Do not create any files — just show me which cell(s) change. Also remind me what needs to be true about data splitting/shuffling for this to actually test seed variance and not accidentally reuse the same split.
+
+PROMPT 5 — C1: Backbone comparison (ResNet-50)
+Using my baseline notebook, show me the changed code to swap the EfficientNet-B0 backbone for ResNet-50, keeping hash head, and cls head architecture otherwise equivalent (adjust only the feature-dimension plumbing needed for the fusion layer to accept ResNet-50's output size). Do not create any files — just show me the modified model-definition cell and any config changes inline. Flag if ResNet-50's parameter-group structure requires any change to how the Phase 2 optimizer is built.
+
+PROMPT 6 — No separate classification head
+Using my baseline notebook, show me the changed code to remove the dedicated cls_head branch and instead derive classification directly from the hash codes — i.e. classify by nearest CSQ class-center in Hamming/cosine space on the hash vector h, with no separate learned classification layer. Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified model class, loss function (LAMBDA_CLS handling), and the test-evaluation cell's prediction logic inline, since accuracy now needs to be computed from hash-to-center distance instead of softmax logits.
+
+PROMPT 7 — B5: No CSQ loss (hash supervision ablation)
+Using my baseline notebook, show me the changed code to run with LAMBDA_CSQ=0 (hash head still outputs bits and is evaluated, but receives no CSQ gradient — only classification, quantization, balance, and diversity losses still apply, or clarify which of those should also be disabled since they assume meaningful hash structure). Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified config/loss cell inline, and flag any loss terms that become degenerate or meaningless once CSQ is off so I know which secondary metrics to ignore for this run.
+
+PROMPT 8 — D5: LR_BACKBONE second value
+Using my baseline notebook, show me the changed code to run with LR_BACKBONE=5e-5 (baseline is 1e-5; this gives a 3-point curve alongside the original 3e-5 run). Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified config cell inline.
+
+PROMPT 9 — B6: No WeightedRandomSampler
+Using my baseline notebook, show me the changed code to remove WeightedRandomSampler and use uniform random sampling for the train DataLoader instead. Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified DataLoader cell inline, and confirm nothing downstream (e.g. loss weighting) implicitly depended on the sampler being weighted.
+
+PROMPT 13 — D3: TARGET_INTRA_D=16 (HASH_BITS/8)
+Using my baseline notebook, show me the changed code to run with TARGET_INTRA_D=16 (baseline is HASH_BITS/4=32). Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified config cell inline.
+
+PROMPT 14 — D3: TARGET_INTRA_D=64 (HASH_BITS/2)
+Same as above, with TARGET_INTRA_D=64. Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified config cell inline.
+
+PROMPT 15 — D4: CSQ_SCALE=1.0
+Using my baseline notebook, show me the changed code to run with CSQ_SCALE=1.0 (baseline is 2.0). Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified config cell inline.
+
+PROMPT 16 — D4: CSQ_SCALE=4.0
+Same as above, with CSQ_SCALE=4.0. Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified config cell inline.
+
+PROMPT 17 — D6: LAMBDA_CSQ=1.0
+Using my baseline notebook, show me the changed code to run with LAMBDA_CSQ=1.0 (baseline is 1.5). Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified config cell inline.
+
+PROMPT 18 — D6: LAMBDA_CSQ=3.0
+Same as above, with LAMBDA_CSQ=3.0. Set EPOCHS_FINETUNE=15. Do not create any files — just show me the modified config cell inline.
+
+PROMPT 10 — Post-hoc, no retrain: threshold + retrieval-k + bit-truncation analysis
+Using my existing baseline checkpoint and its already-computed test-set hash codes/logits (no retraining), show me the code for three post-hoc analyses: (1) a classification threshold sweep with Accuracy/F1/TPR/TNR plotted vs threshold, (2) Precision@k and mAP plotted vs k for the retrieval task, and (3) a bit-truncation retrieval analysis using only the top-K PCA-ranked hash dimensions (K = 16, 32, 64, 128) instead of all 128 bits, clearly labeled as a truncation analysis rather than a true HASH_BITS sensitivity result. Do not create any files — just show me the code for each analysis inline, using variables/objects that should already exist in memory after Cell 10/11/12.
+
+PROMPT 19: Changing the loss function to DeepCauchyHashLoss (Cao et al., CVPR 2018) — pairwise Cauchy -> cross-entropy + Cauchy quantization, no fixed centers
